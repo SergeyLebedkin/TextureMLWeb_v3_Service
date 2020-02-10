@@ -3,6 +3,8 @@ from io import BytesIO
 import base64
 import json
 import numpy
+import glob
+import os
 
 # image_to_base64
 def image_to_base64(image: Image) -> str:
@@ -15,36 +17,34 @@ def base64_to_image(data: str) -> Image:
     return Image.open(BytesIO(base64.b64decode(data)))
  
 # extract_image_data
-def extract_image_data(data: dict) -> ([], [], []):
+def extract_image_data(data: dict) -> ([], []):
     images_name = []
-    images_se = []
-    images_bse = []
+    images = []
     # extract images
     for image_name in data["images"]:
         # decode image
-        image_se  = base64_to_image(data["images"][image_name]["se"]).convert("L")
-        image_bse = base64_to_image(data["images"][image_name]["bse"]).convert("L")
+        image = base64_to_image(data["images"][image_name]).convert("L")
         # append images
         images_name.append(image_name)
-        images_se.append(image_se)
-        images_bse.append(image_bse)
+        images.append(image)
     # return results
-    return images_name, images_se, images_bse
+    return images_name, images
 
 # pack_image_data
-def pack_image_data(images_name: [], images: []) -> dict:
-    data = { "success": True }
-    data["segmentations"] = json.dumps([image_to_base64(image) for image in images])
-    data["dimensions"] = json.dumps([[image.height, image.width] for image in images])
+def pack_image_data(images_crop: [], images_repr: []) -> dict:
+    data = { "success": True, "images": { "crop": {}, "repr": {} } }
+    # pack crops
+    for image in images_crop:
+        file_name, file_ext = os.path.splitext(os.path.basename(image.filename))
+        data["images"]["crop"][file_name+file_ext] = image_to_base64(image)
+    # pack representative crops
+    for image in images_repr:
+        file_name, file_ext = os.path.splitext(os.path.basename(image.filename))
+        data["images"]["repr"][file_name+file_ext] = image_to_base64(image)
     return data
 
-# calculate_segmentation
-def calculate_segmentation(images_se: [], images_bse: []) -> []:
-    images_seg = []
-    # calculations
-    for image_se in images_se:
-        image_array = numpy.array(image_se)
-        image_array_res = numpy.fix(image_array / 64)
-        images_seg.append(Image.fromarray(image_array_res).convert('L'))
-    # return results
-    return images_seg
+# calculate_crops
+def calculate_crops(images: []) -> ([], []):
+    images_crop = [Image.open(file) for file in glob.glob("./images/crops_images/*.png")]
+    images_repr = [Image.open(file) for file in glob.glob("./images/representative_crops_images/*.png")]
+    return images_crop, images_repr

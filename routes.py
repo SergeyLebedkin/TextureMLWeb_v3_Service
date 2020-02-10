@@ -12,19 +12,19 @@ def after_request(response):
 	return response
 
 # sermentation 2d server
-@web_server.route("/texmlv3", methods=["POST"])
+@web_server.route("/texml_v3", methods=["POST"])
 def seg2d():
     # get request data
     request_data = request.get_json()
     # extract image data
-    images_name, images_se, images_bse = extract_image_data(request_data["payload"])
+    images_name, images = extract_image_data(request_data["payload"])
     print("images received:     ", images_name)
     # create image segmentations
     print("start calculations...", images_name)
-    images_seg = calculate_segmentation(images_se, images_bse)
+    images_crop, images_repr = calculate_crops(images)
     print("images calculated:   ", images_name)
     # create response_data
-    response_data = pack_image_data(images_name, images_seg)
+    response_data = pack_image_data(images_crop, images_repr)
     print("images sended:       ", images_name)
     print("=====================")
     # send results
